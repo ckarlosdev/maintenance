@@ -5,14 +5,13 @@ import type { CreateScheduleDTO, MaintenanceForm, Mechanic } from "../../types";
 import { BsWrenchAdjustable } from "react-icons/bs";
 import { useCreateSchedule } from "../../hooks/useSchedules";
 import { UserPinValidationModal } from "../TaskValidationModal";
-import { useGetWorkOrderById } from "../../hooks/useWorkOrders";
 
 type Props = {};
 
 type FormErrors = Partial<Record<keyof CreateScheduleDTO, string>>;
 
 function ScheduleCreation({}: Props) {
-  const { activeModal, equipmentSelected, closeModal, openModal } =
+  const { activeModal, equipmentSelected, closeModal } =
     useModalStore();
   const { mutate: handleCreateSchedule, isPending } = useCreateSchedule();
   const [errors, setErrors] = useState<FormErrors>({});

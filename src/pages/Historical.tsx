@@ -1,5 +1,4 @@
 import { useNavigate, useParams } from "react-router-dom";
-import WorkOrderCreation from "../components/WorkOrderCreation";
 
 type Props = {};
 
@@ -18,7 +17,6 @@ function Historical({}: Props) {
           ‹ Back to Home
         </button>
       </div>
-      
     </>
   );
 }

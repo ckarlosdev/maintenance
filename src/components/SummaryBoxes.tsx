@@ -72,7 +72,7 @@ const METRICS_CONFIG: MetricConfig[] = [
 
 function SummaryBoxes({}: Props) {
   const { data: metricsData, isLoading: metricsLoading } = useMetrics();
-  const { openModal, setEquipmentSelected: setEquipment } = useModalStore();
+  const { openModal } = useModalStore();
 
   const handleCardClick = (kpiType: KpiType, label: string) => {
     openModal("KPI_DETAILS", { category: kpiType, title: label });

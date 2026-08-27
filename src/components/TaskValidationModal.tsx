@@ -28,7 +28,7 @@ export function UserPinValidationModal({
   const [error, setError] = useState<string | null>(null);
   const { data: mechanics } = useActiveMechanics();
 
-  const { mutate: validatePin, isPending } = useValidatePin();
+  const { mutate: validatePin } = useValidatePin();
 
   const handleNumClick = (num: string) => {
     if (pin.length < 6) {
