@@ -1,0 +1,72 @@
+.metric-label {
+  font-size: 0.7rem; /* Ligeramente más pequeño en móvil */
+  letter-spacing: 0.03em;
+}
+
+/* Número grande en Desktop, compacto en Móvil */
+.metric-value {
+  font-size: 1.5rem; /* Tamaño en Celulares */
+  line-height: 1;
+}
+
+/* En pantallas medianas (tablets/laptops), aumentamos el tamaño */
+@media (min-width: 576px) {
+  .metric-label {
+    font-size: 0.75rem;
+  }
+  .metric-value {
+    font-size: 2rem;
+  }
+}
+
+.metric-card {
+  border-radius: 12px !important;
+  background-color: #ffffff;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Tipografía adaptable */
+.metric-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.metric-value {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+/* 📱 EFECTO GLOW (Solo en Celulares: < 576px) */
+@media (max-width: 575.98px) {
+  .metric-glow-warning {
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.28) !important;
+  }
+  .metric-glow-danger {
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.28) !important;
+  }
+  .metric-glow-primary {
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.28) !important;
+  }
+  .metric-glow-success {
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.28) !important;
+  }
+}
+
+/* 💻 PANTALLAS GRANDES (≥ 576px): Sombra estándar neutra */
+@media (min-width: 576px) {
+  .metric-card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  }
+  .metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+  }
+  .metric-label {
+    font-size: 0.75rem;
+  }
+  .metric-value {
+    font-size: 2.1rem;
+  }
+}

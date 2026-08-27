@@ -1,0 +1,38 @@
+/* Ancho contenido y adaptable para iPad Mini, Laptop y Pantallas Grandes */
+.responsive-touch-modal {
+  max-width: 580px !important; /* Límite para que no se extienda demasiado */
+  width: 92%;
+  margin: auto;
+}
+
+/* Ajustes de scroll en lista de mecánicos */
+.mechanic-list-container {
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+/* Botones con mínimo de toque responsivo */
+.touch-num-btn {
+  min-height: 44px; /* Tamaño ideal según las guías de iOS/Touch */
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.touch-btn {
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.fs-8 {
+  font-size: 0.75rem;
+}
+
+/* Ajuste específico para iPad Mini en vertical */
+@media (max-width: 576px) {
+  .responsive-touch-modal {
+    max-width: 96% !important;
+  }
+  .mechanic-list-container {
+    max-height: 150px;
+  }
+}

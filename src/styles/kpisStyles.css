@@ -1,0 +1,12 @@
+.fs-7 {
+  font-size: 0.8125rem;
+}
+
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+/* Transición suave al hacer hover en las filas */
+.table-hover tbody tr:hover {
+  background-color: rgba(248, 249, 250, 0.8) !important;
+}

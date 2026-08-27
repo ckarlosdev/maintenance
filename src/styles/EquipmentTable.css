@@ -1,0 +1,32 @@
+/* Estilos para la tabla en PC */
+.custom-equipment-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c757d;
+  font-weight: 600;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.custom-equipment-table td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  font-size: 0.875rem;
+}
+
+.fs-7 {
+  font-size: 0.75rem;
+}
+
+.action-btn-table {
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+/* Tarjeta Móvil */
+.mobile-equipment-card {
+  border-radius: 12px !important;
+  border-left: 4px solid #0d6efd !important; /* Detalle elegante en el borde lateral */
+}
