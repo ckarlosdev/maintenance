@@ -4,18 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useGetChedulesByEquipmentIds } from "../hooks/useSchedules";
 import { useGetIssuesByEquipmentIds } from "../hooks/useIssues";
 import { UserPinValidationModal } from "./TaskValidationModal";
-import type { CreateWorkOrderPayload, Mechanic } from "../types";
+import type {
+  CreateWorkOrderPayload,
+  Mechanic,
+} from "../types";
 import { useSaveWorkOrder } from "../hooks/useWorkOrders";
+import { useUpdateIssueFlow } from "../hooks/useEquipmentIssues";
 
 type Props = {};
 
 function WorkOrderCreation({}: Props) {
   // --- Zustand Store State & Actions ---
   const workOrderData = useWorkOrderStore((state) => state.workOrderData);
-  const { mutate: saveWorkOrder } = useSaveWorkOrder();
+  const { mutateAsync: saveWorkOrder } = useSaveWorkOrder();
   const equipmentSelected = useWorkOrderStore(
     (state) => state.equipmentSelected,
   );
+  const { mutateAsync: updateIssueFlow } = useUpdateIssueFlow();
   const showModal = useWorkOrderStore((state) => state.showModal);
   const [showPinModal, setShowPinModal] = useState(false);
 
@@ -125,15 +130,45 @@ function WorkOrderCreation({}: Props) {
     setShowPinModal(true);
   };
 
-  const handleConfirmValidation = (
-    mechanic: Mechanic
-  ) => {
-    // Construimos el payload alineado exactamente a tus tipos
+  // const handleConfirmValidation = (
+  //   mechanic: Mechanic
+  // ) => {
+  //   // Construimos el payload alineado exactamente a tus tipos
+  //   const payload: CreateWorkOrderPayload = {
+  //     equipmentId:
+  //       equipmentSelected?.equipmentsId ?? workOrderData.equipmentId ?? null,
+  //     orderType: workOrderData.orderType || "CORRECTIVE",
+  //     createdBy: mechanic.fullName, // ID del mecánico autenticado
+  //     tasks: workOrderData.tasks.map((task) => ({
+  //       taskDescription: task.taskDescription,
+  //       preventivePlanId: task.preventivePlanId ?? null,
+  //       equipmentIssueId: task.equipmentIssueId ?? null,
+  //       createdBy: mechanic.fullName,
+  //     })),
+  //   };
+
+  //   // Ejecutamos la mutación enviando el objeto { workOrder: payload }
+  //   saveWorkOrder(
+  //     { workOrder: payload },
+  //     {
+  //       onSuccess: (  ) => {
+  //         setShowPinModal(false);
+  //         handleClose(); // Cierra el modal principal y resetea la store Zustand
+  //       },
+  //       onError: (error) => {
+  //         console.error("Error al crear la Work Order:", error);
+  //         // Opcional: Notificar al usuario mediante un Toast o Alerta
+  //       },
+  //     },
+  //   );
+  // };
+
+  const handleConfirmValidation = async (mechanic: Mechanic) => {
     const payload: CreateWorkOrderPayload = {
       equipmentId:
         equipmentSelected?.equipmentsId ?? workOrderData.equipmentId ?? null,
       orderType: workOrderData.orderType || "CORRECTIVE",
-      createdBy: mechanic.fullName, // ID del mecánico autenticado
+      createdBy: mechanic.fullName,
       tasks: workOrderData.tasks.map((task) => ({
         taskDescription: task.taskDescription,
         preventivePlanId: task.preventivePlanId ?? null,
@@ -142,20 +177,37 @@ function WorkOrderCreation({}: Props) {
       })),
     };
 
-    // Ejecutamos la mutación enviando el objeto { workOrder: payload }
-    saveWorkOrder(
-      { workOrder: payload },
-      {
-        onSuccess: () => {
-          setShowPinModal(false);
-          handleClose(); // Cierra el modal principal y resetea la store Zustand
-        },
-        onError: (error) => {
-          console.error("Error al crear la Work Order:", error);
-          // Opcional: Notificar al usuario mediante un Toast o Alerta
-        },
-      },
-    );
+    try {
+      // 1. Guardar la Work Order y obtener la respuesta de la API
+      const newWorkOrder = await saveWorkOrder({ workOrder: payload });
+
+      // 2. Extraer los referenceId únicos de los issues asociados
+      const issueReferenceIds = Array.from(
+        new Set(
+          newWorkOrder.tasks
+            .map((t) => t.issue?.referenceId)
+            .filter((id): id is number => id !== undefined && id !== null),
+        ),
+      );
+
+      // 3. Si hay issues asociados, actualizar su flow
+      if (issueReferenceIds.length > 0) {
+        await updateIssueFlow({
+          issueIds: issueReferenceIds,
+          newFlow: "In Progress",
+        });
+      }
+
+      // 4. Limpieza de UI
+      setShowPinModal(false);
+      handleClose();
+    } catch (error) {
+      console.error(
+        "Error al procesar la orden de trabajo o actualizar los issues:",
+        error,
+      );
+      // Mostrar Toast o notificación de error al usuario
+    }
   };
 
   const handleClose = () => {
