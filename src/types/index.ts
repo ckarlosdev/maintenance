@@ -124,9 +124,12 @@ export type PreventiveScheduleResponseDto = {
 export type EquipmentIssueResponseDto = {
   id: number;
   equipmentId: number;
+  referenceId: number;
   reportedBy: string;
   reportedAt: string;
+  issueType: string;
   issueDescription: string;
+  details: string;
   severity: string;
   issueStatus: string;
   workOrderId: number;
@@ -227,3 +230,8 @@ export type Role = {
   id: number;
   name: string;
 };
+
+export interface UpdateIssueFlowRequest {
+  issueIds: number[];
+  newFlow: string;
+}

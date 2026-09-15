@@ -29,9 +29,7 @@ export function useGetWorkOrdesrsByEquipmentId(equipmentID: number) {
 const queryGetWorkOrderById = async (
   workOrderId: number,
 ): Promise<WorkOrder> => {
-  const { data } = await api.get(
-    `v2/maintenance/work-order/${workOrderId}`,
-  );
+  const { data } = await api.get(`v2/maintenance/work-order/${workOrderId}`);
   return data;
 };
 
@@ -48,25 +46,29 @@ const createWorkOrder = async ({
   workOrder,
 }: {
   workOrder: CreateWorkOrderPayload;
-}) => {
-  return api.post("v2/maintenance/work-order", workOrder);
+}): Promise<WorkOrder> => {
+  const response = await api.post<WorkOrder>(
+    "v2/maintenance/work-order",
+    workOrder,
+  );
+  return response.data;
 };
 
 export function useSaveWorkOrder() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  // Passing <WorkOrder, Error, { workOrder: CreateWorkOrderPayload }>
+  return useMutation<
+    WorkOrder, // 1. TData: Tipo de respuesta de la API (lo que retorna mutateAsync)
+    Error, // 2. TError: Tipo de error
+    { workOrder: CreateWorkOrderPayload } // 3. TVariables: El objeto payload que recibe la función
+  >({
     mutationFn: createWorkOrder,
     onSuccess: () => {
-      // 1. Refresca la lista de órdenes de trabajo
       queryClient.invalidateQueries({ queryKey: ["workOrders"] });
-
-      // 2. Refresca la lista de schedules para desmarcar el que ya se asignó
       queryClient.invalidateQueries({
         queryKey: ["schedules", "active-by-equipments"],
-      }); // Ajusta a la queryKey exacta que uses en useGetChedulesByEquipmentIds
-
-      // 3. Refresca los issues pendientes por si la orden consumió alguno
+      });
       queryClient.invalidateQueries({
         queryKey: ["issues", "active-by-equipments"],
       });

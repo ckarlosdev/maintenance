@@ -23,6 +23,7 @@ import type {
 import { TaskModal } from "./workOrder/TaskModal";
 import React from "react";
 import { CloseWorkOrderModal } from "./workOrder/CloseWorkOrderPayload";
+import { useUpdateIssueFlow } from "../hooks/useEquipmentIssues";
 
 type ActionType = "TASK_TOGGLE" | "CREATE_WORK_ORDER" | "CLOSE_WORK_ORDER";
 
@@ -61,6 +62,7 @@ export function WorkOrderTable() {
 
   const { mutate: updateTask } = useUpdateTask();
   const { mutate: closeWorkOrder } = useCloseWorkOrder();
+  const { mutate: setIssueFlow } = useUpdateIssueFlow();
 
   const sortedWorkOrders = useMemo(() => {
     const orders = workOrders ?? [];
@@ -79,7 +81,6 @@ export function WorkOrderTable() {
 
   const handleValidationConfirm = (mechanic: Mechanic) => {
     if (!validationContext) return;
-    console.log(mechanic);
 
     switch (validationContext.type) {
       case "TASK_TOGGLE": {
@@ -106,7 +107,8 @@ export function WorkOrderTable() {
       }
 
       case "CLOSE_WORK_ORDER": {
-        const { workOrderId, nextScheduleData } = validationContext.payload;
+        const { workOrderId, nextScheduleData, tasks } =
+          validationContext.payload;
 
         closeWorkOrder(
           {
@@ -119,9 +121,38 @@ export function WorkOrderTable() {
             },
           },
           {
-            onSuccess: () => setValidationContext(null),
-            onError: (error) => {
+            onSuccess: async () => {
+              // Extraer los issueIds de las tareas vinculadas
+              const issueReferenceIds = Array.from(
+                new Set(
+                  ((tasks as Task[]) ?? [])
+                    .map((t) => t.issue?.referenceId)
+                    .filter(
+                      (id): id is number => id !== undefined && id !== null,
+                    ),
+                ),
+              );
+
+              if (issueReferenceIds.length > 0) {
+                try {
+                  await setIssueFlow({
+                    issueIds: issueReferenceIds,
+                    newFlow: "Fixed",
+                  });
+                } catch (error) {
+                  console.error(
+                    "Error al actualizar el flow de los Issues:",
+                    error,
+                  );
+                }
+              }
+
+              setValidationContext(null);
+            },
+            onError: (error: any) => {
               console.error("Error al cerrar la orden de trabajo:", error);
+              // Inspecciona el cuerpo del error 400 devuelto por Spring Boot
+              console.error("Detalle del backend:", error?.response?.data);
             },
           },
         );
@@ -153,7 +184,10 @@ export function WorkOrderTable() {
         type: "CLOSE_WORK_ORDER",
         title: "Close Work Order",
         description: `Are you sure you want to close Work Order #${workOrder.id}?`,
-        payload: { workOrderId: workOrder.id },
+        payload: {
+          workOrderId: workOrder.id, // 👈 AGREGAR AQUÍ
+          tasks: workOrder.tasks,
+        },
       });
     }
   };
@@ -168,6 +202,7 @@ export function WorkOrderTable() {
       payload: {
         workOrderId: workOrderToClose.id,
         nextScheduleData,
+        tasks: workOrderToClose.tasks,
       },
     });
 

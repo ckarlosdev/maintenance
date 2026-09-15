@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Button, Row, Col, Card } from "react-bootstrap";
+import { Modal, Button, Row, Col, Card, Spinner } from "react-bootstrap";
 import { FaUser, FaLock, FaBackspace, FaCheck, FaTimes } from "react-icons/fa";
 import "../styles/modalValidation.css";
 import { useActiveMechanics, useValidatePin } from "../hooks/useMechanic";
@@ -28,10 +28,13 @@ export function UserPinValidationModal({
   const [error, setError] = useState<string | null>(null);
   const { data: mechanics } = useActiveMechanics();
 
-  const { mutate: validatePin } = useValidatePin();
+  const { mutate: validatePin, isPending: isValidating } = useValidatePin();
+
+  const isKeypadDisabled = !selectedMechanicId || isValidating;
+  const isInteractionDisabled = isValidating;
 
   const handleNumClick = (num: string) => {
-    if (pin.length < 6) {
+    if (pin.length < 4) {
       setPin((prev) => prev + num);
       setError(null);
     }
@@ -79,6 +82,7 @@ export function UserPinValidationModal({
   );
 
   const handleResetAndClose = () => {
+    if (isValidating) return;
     setSelectedMechanicId(null);
     setPin("");
     setError(null);
@@ -94,7 +98,7 @@ export function UserPinValidationModal({
       dialogClassName="responsive-touch-modal"
     >
       <Modal.Header
-        closeButton
+        closeButton={!isValidating}
         className="bg-dark text-white border-0 py-2 px-3"
       >
         <Modal.Title className="fs-6 fw-bold">
@@ -134,6 +138,7 @@ export function UserPinValidationModal({
                   <Button
                     key={mechanic.id}
                     variant={isSelected ? "primary" : "white"}
+                    disabled={isInteractionDisabled}
                     className={`text-start p-2 border rounded-3 d-flex justify-content-between align-items-center touch-btn shadow-sm ${
                       isSelected ? "border-primary fw-bold" : "text-dark"
                     }`}
@@ -160,13 +165,22 @@ export function UserPinValidationModal({
 
             <div className="bg-white border rounded-3 py-1 px-2 mb-2 text-center shadow-sm">
               <div
-                className="fs-4 fw-bold text-primary tracking-widest"
+                className="fs-4 fw-bold text-primary tracking-widest d-flex align-items-center justify-content-center"
                 style={{ minHeight: "32px", letterSpacing: "8px" }}
               >
-                {pin ? (
+                {isValidating ? (
+                  <span className="text-muted fs-7 letter-spacing-normal">
+                    Validating...
+                  </span>
+                ) : pin ? (
                   "•".repeat(pin.length)
                 ) : (
-                  <span className="text-muted fs-6">____</span>
+                  <span
+                    className="text-muted fs-6"
+                    style={{ letterSpacing: "normal" }}
+                  >
+                    {!selectedMechanicId ? "Select user first" : "____"}
+                  </span>
                 )}
               </div>
             </div>
@@ -180,6 +194,7 @@ export function UserPinValidationModal({
                   key={num}
                   variant="outline-secondary"
                   className="py-2 fs-5 fw-bold bg-white touch-num-btn shadow-sm"
+                  disabled={isKeypadDisabled}
                   onClick={() => handleNumClick(num)}
                 >
                   {num}
@@ -188,6 +203,7 @@ export function UserPinValidationModal({
               <Button
                 variant="outline-danger"
                 className="py-2 fs-6 fw-bold bg-white touch-num-btn"
+                disabled={isKeypadDisabled}
                 onClick={handleClear}
               >
                 C
@@ -195,6 +211,7 @@ export function UserPinValidationModal({
               <Button
                 variant="outline-secondary"
                 className="py-2 fs-5 fw-bold bg-white touch-num-btn shadow-sm"
+                disabled={isKeypadDisabled}
                 onClick={() => handleNumClick("0")}
               >
                 0
@@ -202,6 +219,7 @@ export function UserPinValidationModal({
               <Button
                 variant="outline-warning"
                 className="py-2 fs-6 fw-bold bg-white touch-num-btn"
+                disabled={isKeypadDisabled}
                 onClick={handleBackspace}
               >
                 <FaBackspace />
@@ -216,6 +234,7 @@ export function UserPinValidationModal({
           variant="light"
           size="sm"
           className="flex-grow-1 py-2 border fw-bold text-secondary touch-btn fs-7"
+          disabled={isValidating}
           onClick={handleResetAndClose}
         >
           <FaTimes className="me-1" /> Cancel
@@ -224,9 +243,26 @@ export function UserPinValidationModal({
           variant="success"
           size="sm"
           className="flex-grow-1 py-2 fw-bold touch-btn fs-7"
+          disabled={!selectedMechanicId || pin.length !== 4 || isValidating}
           onClick={handlePinSubmit}
         >
-          <FaCheck className="me-1" /> Confirm
+          {isValidating ? (
+            <>
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+                className="me-2"
+              />
+              Validating...
+            </>
+          ) : (
+            <>
+              <FaCheck className="me-1" /> Confirm
+            </>
+          )}
         </Button>
       </Modal.Footer>
     </Modal>

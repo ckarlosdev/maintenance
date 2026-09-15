@@ -45,7 +45,6 @@ function IssuesModal() {
   };
 
   const handleCreateWorkOrders = () => {
-    console.log("handleCreateWorkOrders");
     if (!equipmentSelected) {
       console.log("Equipment not found.");
       return;
@@ -152,9 +151,9 @@ function IssuesModal() {
                             variant="outline-primary"
                             className="d-inline-flex align-items-center justify-content-center gap-1"
                             style={{
-                              fontSize: "9px",
+                              fontSize: "10px",
                               height: "25px",
-                              width: "120px",
+                              width: "135px",
                               fontWeight: "bold",
                             }}
                             onClick={handleCreateWorkOrders}
