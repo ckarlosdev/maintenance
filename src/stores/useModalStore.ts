@@ -8,7 +8,8 @@ export type ModalType =
   | "SCHEDULE_CREATION"
   | "KPI_DETAILS"
   | "NEW_TASK"
-  | "WORK_ORDER_DETAIL";
+  | "WORK_ORDER_DETAIL"
+  | "REPORTED_ISSUES_LIST";
 
 // 2. Tipamos la estructura del store
 type ModalStore = {

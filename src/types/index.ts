@@ -45,9 +45,12 @@ export type Issue = {
 export type EquipmentIssueSummary = {
   id: number;
   equipmentId: number;
+  referenceId: number;
   reportedBy: string;
   reportedAt: string;
+  issueType: string;
   issueDescription: string;
+  details: string;
   severity: "LOW" | "MEDIUM" | "CRITICAL";
   issueStatus: "OPEN" | "IN_PROGRESS" | "RESOLVED";
   workOrderId: number | null;
@@ -66,7 +69,6 @@ export type Schedule = {
   dueDate: string;
   dueMeter: number;
   isOverdue: boolean;
-
   workOrderId: number;
   orderStatus: string | null;
   isCompleted: boolean;
@@ -138,7 +140,7 @@ export type EquipmentIssueResponseDto = {
 
 export type Metric = {
   dueSoonMaintenances: number;
-  criticalOpenIssues: number;
+  reportedIssues: number;
   pendingWorkOrders: number;
   inProgressIssues: number;
 };
@@ -157,7 +159,7 @@ export type KpiType =
   | "PENDING_WOS"
   | "DUE_SOON"
   | "IN_PROGRESS"
-  | "CRITICAL_ISSUES";
+  | "REPORTED_ISSUES";
 
 export type OrderType = "CORRECTIVE" | "PREVENTIVE";
 
