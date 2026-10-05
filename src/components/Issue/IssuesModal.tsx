@@ -66,6 +66,7 @@ function IssuesModal() {
         onHide={() => setShowModal(false)}
         backdrop="static"
         keyboard={false}
+        size="lg"
         scrollable
       >
         <Modal.Header closeButton>
@@ -115,8 +116,15 @@ function IssuesModal() {
                     </div>
 
                     {/* Descripción principal */}
-                    <p className="mb-3 text-dark fw-medium fs-6">
+                    <p className="mb-1 text-dark fw-medium fs-6">
                       {issue.issueDescription}
+                    </p>
+
+                    <p
+                      className="mb-3 text-muted p-2 bg-light border-start border-3 border-secondary rounded-end"
+                      style={{ fontSize: "12px" }}
+                    >
+                      {issue.details}
                     </p>
 
                     <hr className="my-2 opacity-25" />

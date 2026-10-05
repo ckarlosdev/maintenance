@@ -415,6 +415,7 @@ export function WorkOrderTable() {
                                           <span className="text-muted">
                                             Issue ID: {task.issue.id}
                                           </span>
+
                                           <Badge
                                             bg={
                                               task.issue.severity === "HIGH"
@@ -426,6 +427,10 @@ export function WorkOrderTable() {
                                           >
                                             {task.issue.severity}
                                           </Badge>
+                                          <span className="ms-3">
+                                            <strong>Description:</strong>{" "}
+                                            {task.issue.issueDescription}
+                                          </span>
 
                                           <div className="w-100 text-muted mt-1 small">
                                             <span>
@@ -439,6 +444,10 @@ export function WorkOrderTable() {
                                                     task.issue.reportedAt,
                                                   ).toLocaleDateString()
                                                 : "N/A"}
+                                            </span>
+                                            <span className="ms-3">
+                                              <strong>Details:</strong>{" "}
+                                              {task.issue.details}
                                             </span>
                                           </div>
                                         </div>

@@ -9,6 +9,7 @@ import { useMetrics } from "../hooks/useMetrics";
 import type { KpiType } from "../types";
 import type { IconType } from "react-icons/lib";
 import { useModalStore } from "../stores/useModalStore";
+import { useIssueReports } from "../hooks/useIssues";
 
 type Props = {};
 
@@ -16,11 +17,10 @@ interface MetricConfig {
   id: string;
   label: string;
   kpiType: KpiType;
-  apiKey:
+  apiKey?:
     | "pendingWorkOrders"
     | "dueSoonMaintenances"
-    | "inProgressIssues"
-    | "criticalOpenIssues";
+    | "inProgressIssues";
   icon: IconType;
   theme: string;
   bgColor: string;
@@ -59,10 +59,9 @@ const METRICS_CONFIG: MetricConfig[] = [
     textColor: "text-info",
   },
   {
-    id: "critical",
-    label: "Critical Issues",
-    kpiType: "CRITICAL_ISSUES",
-    apiKey: "criticalOpenIssues",
+    id: "reports",
+    label: "Reported Issues",
+    kpiType: "REPORTED_ISSUES",
     icon: FaTimesCircle,
     theme: "danger",
     bgColor: "bg-danger",
@@ -72,18 +71,36 @@ const METRICS_CONFIG: MetricConfig[] = [
 
 function SummaryBoxes({}: Props) {
   const { data: metricsData, isLoading: metricsLoading } = useMetrics();
+  const { data: reports, isLoading: reportsLoading } = useIssueReports();
   const { openModal } = useModalStore();
 
   const handleCardClick = (kpiType: KpiType, label: string) => {
+    if (kpiType === "REPORTED_ISSUES") {
+    openModal("REPORTED_ISSUES_LIST");
+  } else {
     openModal("KPI_DETAILS", { category: kpiType, title: label });
+  }
+  };
+
+  const getMetricDetails = (metric: MetricConfig) => {
+    if (metric.kpiType === "REPORTED_ISSUES") {
+      return {
+        value: Array.isArray(reports) ? reports.length : 0,
+        isLoading: reportsLoading,
+      };
+    }
+
+    return {
+      value: metricsData && metric.apiKey ? metricsData[metric.apiKey] ?? 0 : 0,
+      isLoading: metricsLoading,
+    };
   };
 
   return (
     <Row className="g-2 g-md-3 justify-content-center">
       {METRICS_CONFIG.map((metric) => {
         const IconComponent = metric.icon;
-        // Obtenemos el valor dinámico del objeto del backend
-        const metricValue = metricsData ? metricsData[metric.apiKey] : 0;
+        const { value, isLoading } = getMetricDetails(metric);
 
         return (
           <Col xs={6} sm={6} md={3} key={metric.id}>
@@ -98,7 +115,7 @@ function SummaryBoxes({}: Props) {
                     {metric.label}
                   </span>
                   <h3 className="fw-bold text-dark m-0 metric-value mt-1">
-                    {metricsLoading ? "..." : metricValue}
+                    {isLoading ? "..." : value}
                   </h3>
                 </div>
                 <div

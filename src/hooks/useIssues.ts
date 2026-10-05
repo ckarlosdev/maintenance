@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import type { EquipmentIssueSummary } from "../types";
+import type {
+  EquipmentIssueResponseDto,
+  EquipmentIssueSummary,
+} from "../types";
 import { api } from "./apiConfig";
 
 export type ActiveIssuesMap = Record<number, EquipmentIssueSummary[]>;
@@ -21,6 +24,23 @@ export function useGetIssuesByEquipmentIds(equipmentIds: number[]) {
     queryKey: ["issues", "active-by-equipments", equipmentIds],
     queryFn: () => queryIssuesByEquipmentIds(equipmentIds),
     enabled: equipmentIds.length > 0,
+    retry: false,
+  });
+}
+
+const queryIssueReports = async (): Promise<EquipmentIssueResponseDto[]> => {
+  const { data } = await api.get<EquipmentIssueResponseDto[]>(
+    `v2/maintenance/issue/reports`,
+  );
+  return data;
+};
+
+export function useIssueReports() {
+  return useQuery<EquipmentIssueResponseDto[]>({
+    queryKey: ["issue-reports"],
+    queryFn: () => queryIssueReports(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: false,
   });
 }

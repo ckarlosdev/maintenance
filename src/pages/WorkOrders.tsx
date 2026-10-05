@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { Col, Container, Row } from "react-bootstrap";
 import PageTitle from "../components/PageTitle";
 import WorkOrderTable from "../components/WorkOrderTable";
 import EquipmentData from "../components/EquipmentData";
-import WorkOrderCreation from "../components/WorkOrderCreation";
 import WorkOrdersButtons from "../components/WorkOrdersButtons";
+
+const WorkOrderCreation = lazy(() => import("../components/WorkOrderCreation"));
 
 type Props = {};
 
@@ -33,7 +35,9 @@ function WorkOrders({}: Props) {
         </Row>
       </Container>
 
-      <WorkOrderCreation />
+      <Suspense fallback={null}>
+        <WorkOrderCreation />
+      </Suspense>
     </>
   );
 }
