@@ -14,11 +14,12 @@ function PageTitle({ children }: Props) {
       {/* 2. CONTENEDOR ADAPTATIVO */}
       <div className="title-header-layout align-items-center gap-2 gap-md-3">
         {/* BOTÓN BINDER / HOME */}
-        <div className="order-2 order-sm-1 d-flex justify-content-start align-items-center">
+
+        <div className="order-2 order-sm-1 d-flex justify-content-start align-items-center gap-2">
           <Button
             variant="outline-secondary"
             className="no-print d-flex align-items-center justify-content-center gap-1 header-btn"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/")} // Navega a la nueva vista Home
           >
             ‹ Back
           </Button>

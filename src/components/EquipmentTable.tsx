@@ -9,7 +9,7 @@ import {
 } from "react-bootstrap";
 import "../styles/EquipmentTable.css";
 import { useNavigate } from "react-router-dom";
-import useEquipments from "../hooks/useEquipments";
+import { useEquipments } from "../hooks/useEquipments";
 import useWorkOrderStore from "../stores/useWorkOrderStore";
 import { useEffect, useMemo, useState } from "react";
 import { IoMdSearch } from "react-icons/io";
