@@ -1,9 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Col, Container, Row } from "react-bootstrap";
-import PageTitle from "../components/PageTitle";
 import WorkOrderTable from "../components/WorkOrderTable";
 import EquipmentData from "../components/EquipmentData";
 import WorkOrdersButtons from "../components/WorkOrdersButtons";
+import PageTitle from "../components/PageTitle";
 
 const WorkOrderCreation = lazy(() => import("../components/WorkOrderCreation"));
 

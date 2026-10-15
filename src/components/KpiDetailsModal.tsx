@@ -10,7 +10,7 @@ import {
 } from "react-icons/fa";
 import type { KpiDetailResponseDto } from "../types";
 import "../styles/kpisStyles.css";
-import useEquipments from "../hooks/useEquipments";
+import { useEquipments } from "../hooks/useEquipments";
 
 type Props = {};
 

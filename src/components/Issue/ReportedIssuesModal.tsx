@@ -7,7 +7,7 @@ import {
 } from "react-icons/fa";
 import { useModalStore } from "../../stores/useModalStore";
 import { useIssueReports } from "../../hooks/useIssues";
-import useEquipments from "../../hooks/useEquipments";
+import { useEquipments } from "../../hooks/useEquipments";
 
 type Props = {};
 

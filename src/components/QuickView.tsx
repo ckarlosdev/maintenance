@@ -19,7 +19,7 @@ import {
 } from "react-icons/fi";
 import { useModalStore } from "../stores/useModalStore";
 import { useGetWorkOrderById } from "../hooks/useWorkOrders";
-import useEquipments from "../hooks/useEquipments";
+import {useEquipments} from "../hooks/useEquipments";
 
 export const QuickView: React.FC = () => {
   const { activeModal, data, closeModal } = useModalStore();

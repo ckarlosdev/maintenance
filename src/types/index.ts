@@ -30,6 +30,16 @@ export type Equipment = {
   hour: string;
 };
 
+export type EquipmentDetail = {
+  equipmentsId: number;
+  family: string;
+  hour: number;
+  licensePlate: string;
+  name: string;
+  number: string;
+  subtype: string;
+};
+
 export type Issue = {
   id: number;
   equipmentId: number;
