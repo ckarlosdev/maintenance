@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/authStore";
-import { api } from "./apiConfig";
+import { api, apiExternal } from "./apiConfig";
 import { useEffect } from "react";
 
 const queryMe = async () => {
-  const { data } = await api.get("auth/me");
+  const { data } = await apiExternal.get("auth/me");
   return data;
 };
 

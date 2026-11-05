@@ -2,8 +2,21 @@ import { useEffect, useState } from "react";
 import { Modal, Button, Form, Row, Col, Card, Badge } from "react-bootstrap";
 import type { Task, WorkOrder } from "../../types";
 import useWorkOrderStore from "../../stores/useWorkOrderStore";
+import {
+  useEquipmentVehicleTypeId,
+  useIntervalsByVehicleType,
+  useServiceNames,
+} from "../../hooks/useServices";
+import {
+  computeDueFromInterval,
+  DEFAULT_INTERVAL_METER,
+  DEFAULT_INTERVAL_MONTHS,
+  formatInterval,
+  toISODate,
+} from "../../utilities/scheduleStatus";
 
 export interface NextScheduleInput {
+  /** El backend lo usa como ID del schedule (findByEquipmentIdAndId). */
   preventivePlanId: number;
   nextDueDate?: string;
   nextDueMeter?: number;
@@ -39,6 +52,13 @@ export function CloseWorkOrderModal({
     (state) => state.equipmentSelected,
   );
 
+  const serviceNames = useServiceNames();
+  const vehicleTypeId = useEquipmentVehicleTypeId(workOrder.equipmentId);
+  // Sin default `= []`: el efecto depende de `intervals` y necesita una referencia estable
+  const { data: intervals } = useIntervalsByVehicleType(vehicleTypeId);
+
+  // Indexado por ID del schedule (task.schedule.id), no por servicio:
+  // un equipo puede tener varios reminders.
   const [schedulesData, setSchedulesData] = useState<
     Record<number, { nextDueDate: string; nextDueMeter: string }>
   >({});
@@ -49,15 +69,21 @@ export function CloseWorkOrderModal({
       Boolean(t.schedule),
   );
 
+  const findInterval = (serviceId: number | null | undefined) =>
+    serviceId == null
+      ? undefined
+      : intervals?.find((i) => i.serviceId === serviceId);
+
   useEffect(() => {
     if (!show || preventiveTasks.length === 0) {
       return;
     }
 
     const currentEquipmentMeter = Number(equipmentSelected?.hour ?? 0);
+    const today = toISODate(new Date());
 
-    const suggestedDate = addMonthsToDateString(6);
-    const suggestedMeter = currentEquipmentMeter + 500;
+    const defaultDate = addMonthsToDateString(DEFAULT_INTERVAL_MONTHS);
+    const defaultMeter = currentEquipmentMeter + DEFAULT_INTERVAL_METER;
 
     const initialMap: Record<
       number,
@@ -65,18 +91,23 @@ export function CloseWorkOrderModal({
     > = {};
 
     preventiveTasks.forEach((task) => {
-      const planId = task.schedule.preventivePlanId;
+      const scheduleId = task.schedule.id;
+      const interval = findInterval(task.schedule.preventivePlanId);
+      const computed = interval
+        ? computeDueFromInterval(interval, today, currentEquipmentMeter)
+        : {};
 
-      if (planId !== undefined && planId !== null) {
-        initialMap[planId] = {
-          nextDueDate: suggestedDate,
-          nextDueMeter: String(suggestedMeter),
-        };
-      }
+      // Se llenan ambos campos: el backend conserva el valor anterior
+      // si alguno se envía vacío, y quedaría vencido.
+      initialMap[scheduleId] = {
+        nextDueDate: computed.dueDate ?? defaultDate,
+        nextDueMeter: String(computed.dueMeter ?? defaultMeter),
+      };
     });
 
     setSchedulesData(initialMap);
-  }, [show, workOrder, equipmentSelected?.hour]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show, workOrder, equipmentSelected?.hour, intervals]);
 
   const handleInputChange = (
     planId: number,
@@ -126,7 +157,9 @@ export function CloseWorkOrderModal({
           <div className="d-flex flex-column gap-3">
             {preventiveTasks.map((task) => {
               const schedule = task.schedule;
-              const planId = schedule.preventivePlanId;
+              const planId = schedule.id; // ID del schedule
+              const serviceId = schedule.preventivePlanId;
+              const interval = findInterval(serviceId);
               const currentData = schedulesData[planId] || {
                 nextDueDate: "",
                 nextDueMeter: "",
@@ -135,13 +168,20 @@ export function CloseWorkOrderModal({
               return (
                 <Card key={task.id} className="border shadow-sm">
                   <Card.Body>
-                    <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
                       <Badge bg="info" text="dark">
-                        Preventive Plan #{planId}
+                        {serviceId != null
+                          ? (serviceNames[serviceId] ?? `Service #${serviceId}`)
+                          : `Plan #${planId}`}
                       </Badge>
                       <span className="fw-semibold text-dark">
                         {task.taskDescription}
                       </span>
+                      {interval && (
+                        <small className="text-primary">
+                          Interval: every {formatInterval(interval)}
+                        </small>
+                      )}
                     </div>
 
                     <div className="text-muted small mb-2">

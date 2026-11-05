@@ -24,6 +24,7 @@ import { TaskModal } from "./workOrder/TaskModal";
 import React from "react";
 import { CloseWorkOrderModal } from "./workOrder/CloseWorkOrderPayload";
 import { useUpdateIssueFlow } from "../hooks/useEquipmentIssues";
+import { useServiceNames } from "../hooks/useServices";
 
 type ActionType = "TASK_TOGGLE" | "CREATE_WORK_ORDER" | "CLOSE_WORK_ORDER";
 
@@ -63,6 +64,7 @@ export function WorkOrderTable() {
   const { mutate: updateTask } = useUpdateTask();
   const { mutate: closeWorkOrder } = useCloseWorkOrder();
   const { mutate: setIssueFlow } = useUpdateIssueFlow();
+  const serviceNames = useServiceNames();
 
   const sortedWorkOrders = useMemo(() => {
     const orders = workOrders ?? [];
@@ -460,11 +462,13 @@ export function WorkOrderTable() {
                                             text="dark"
                                             className="fw-normal"
                                           >
-                                            Preventive Plan
+                                            Preventive
                                           </Badge>
-                                          <span>
-                                            Plan ID:{" "}
-                                            {task.schedule.preventivePlanId}
+                                          <span className="fw-semibold">
+                                            {serviceNames[
+                                              task.schedule.preventivePlanId
+                                            ] ??
+                                              `Plan ID: ${task.schedule.preventivePlanId}`}
                                           </span>
                                           <span className="ms-2 fw-medium text-dark">
                                             📅 Due:{" "}
@@ -538,7 +542,8 @@ export function WorkOrderTable() {
             equipmentId: selectedWorkOrder.equipmentId,
             equipmentNumber: "test",
             existingTasks: (selectedWorkOrder.tasks ?? []).map((task) => ({
-              preventivePlanId: task.schedule?.preventivePlanId ?? null,
+              // ID del schedule (es lo que guarda work_order_tasks.preventive_plan_id)
+              preventivePlanId: task.schedule?.id ?? null,
               equipmentIssueId: task.issue?.id ?? null,
             })),
           }}

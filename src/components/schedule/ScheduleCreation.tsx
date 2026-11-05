@@ -1,172 +1,196 @@
-import { Button, Form, InputGroup, Modal } from "react-bootstrap";
+import { Button, Form, Modal } from "react-bootstrap";
 import { useModalStore } from "../../stores/useModalStore";
-import { useEffect, useState } from "react";
-import type { CreateScheduleDTO, MaintenanceForm, Mechanic } from "../../types";
+import { useMemo, useState } from "react";
+import type { CreateScheduleDTO, Equipment, Mechanic } from "../../types";
 import { BsWrenchAdjustable } from "react-icons/bs";
-import { useCreateSchedule } from "../../hooks/useSchedules";
+import {
+  useCreateSchedule,
+  useGetChedulesByEquipmentIds,
+} from "../../hooks/useSchedules";
+import {
+  useEquipmentVehicleTypeId,
+  useIntervalsByVehicleType,
+  useServices,
+} from "../../hooks/useServices";
 import { UserPinValidationModal } from "../TaskValidationModal";
+import { VEHICLE_TYPES } from "../../utilities/vehicleTypes";
+import {
+  addMonths,
+  computeDueFromInterval,
+  DEFAULT_INTERVAL_METER,
+  DEFAULT_INTERVAL_MONTHS,
+  formatInterval,
+  isMeterInterval,
+  isTimeInterval,
+  parseISODate,
+  toISODate,
+} from "../../utilities/scheduleStatus";
 
-type Props = {};
+type FormErrors = Partial<
+  Record<
+    | "preventivePlanId"
+    | "lastPerformedDate"
+    | "lastPerformedMeter"
+    | "dueDate"
+    | "dueMeter",
+    string
+  >
+>;
 
-type FormErrors = Partial<Record<keyof CreateScheduleDTO, string>>;
+type MeterValue = number | "";
 
-function ScheduleCreation({}: Props) {
-  const { activeModal, equipmentSelected, closeModal } =
-    useModalStore();
+const toMeter = (value: string): MeterValue =>
+  value === "" ? "" : Number(value);
+
+// Wrapper: el formulario se monta en cada apertura (key por equipo),
+// así el estado arranca limpio sin useEffect de reseteo.
+function ScheduleCreation() {
+  const { activeModal, equipmentSelected } = useModalStore();
+  if (activeModal !== "SCHEDULE_CREATION" || !equipmentSelected) return null;
+  return (
+    <ScheduleCreationForm
+      key={equipmentSelected.equipmentsId}
+      equipment={equipmentSelected}
+    />
+  );
+}
+
+function ScheduleCreationForm({ equipment }: { equipment: Equipment }) {
+  const { openModal } = useModalStore();
   const { mutate: handleCreateSchedule, isPending } = useCreateSchedule();
+  const { data: services = [], isLoading: loadingServices } = useServices();
+  const { data: existingSchedules = [] } = useGetChedulesByEquipmentIds([
+    equipment.equipmentsId,
+  ]);
+
+  const detectedVehicleTypeId = useEquipmentVehicleTypeId(
+    equipment.equipmentsId,
+  );
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPinModal, setShowPinModal] = useState(false);
 
-  const isOpen = activeModal === "SCHEDULE_CREATION";
+  // --- Estado del formulario ---
+  const [serviceId, setServiceId] = useState<number | null>(null);
+  // undefined = usar el vehicle type detectado; null = "sin tipo"
+  const [vehicleTypeOverride, setVehicleTypeOverride] = useState<
+    number | null | undefined
+  >(undefined);
+  const [lastPerformedDate, setLastPerformedDate] = useState(
+    toISODate(new Date()),
+  );
+  const [lastPerformedMeter, setLastPerformedMeter] = useState<MeterValue>(
+    Number(equipment.hour) || 0,
+  );
+  // undefined = usar el valor sugerido; cualquier otro valor = editado a mano
+  const [dueDateOverride, setDueDateOverride] = useState<string | undefined>();
+  const [dueMeterOverride, setDueMeterOverride] = useState<
+    MeterValue | undefined
+  >();
 
-  const addMonths = (date: Date = new Date(), months: number): string => {
-    const result = new Date(date);
-    result.setMonth(result.getMonth() + months);
-    return result.toISOString().split("T")[0];
+  const vehicleTypeId =
+    vehicleTypeOverride !== undefined
+      ? vehicleTypeOverride
+      : detectedVehicleTypeId;
+
+  const { data: intervals = [], isFetching: loadingIntervals } =
+    useIntervalsByVehicleType(vehicleTypeId);
+
+  const usedServiceIds = useMemo(
+    () => new Set(existingSchedules.map((s) => s.preventivePlanId)),
+    [existingSchedules],
+  );
+
+  const activeInterval = useMemo(() => {
+    if (serviceId == null) return null;
+    const interval = intervals.find((i) => i.serviceId === serviceId);
+    if (!interval) return null;
+    return isTimeInterval(interval) || isMeterInterval(interval)
+      ? interval
+      : null;
+  }, [intervals, serviceId]);
+
+  // Vencimiento sugerido: por intervalo del servicio o por defecto
+  const suggested = useMemo((): { dueDate: string; dueMeter: MeterValue } => {
+    const lastMeter =
+      lastPerformedMeter === "" ? null : Number(lastPerformedMeter);
+
+    if (activeInterval) {
+      const computed = computeDueFromInterval(
+        activeInterval,
+        lastPerformedDate,
+        lastMeter,
+      );
+      return {
+        dueDate: computed.dueDate ?? "",
+        dueMeter: computed.dueMeter ?? "",
+      };
+    }
+
+    return {
+      dueDate: lastPerformedDate
+        ? addMonths(parseISODate(lastPerformedDate), DEFAULT_INTERVAL_MONTHS)
+        : "",
+      dueMeter: lastMeter == null ? "" : lastMeter + DEFAULT_INTERVAL_METER,
+    };
+  }, [activeInterval, lastPerformedDate, lastPerformedMeter]);
+
+  const dueDate = dueDateOverride ?? suggested.dueDate;
+  const dueMeter = dueMeterOverride ?? suggested.dueMeter;
+
+  // Al cambiar los datos base se descartan las ediciones manuales del vencimiento
+  const resetDueOverrides = () => {
+    setDueDateOverride(undefined);
+    setDueMeterOverride(undefined);
   };
 
-  const today = new Date();
-  const odometer = Number(equipmentSelected?.hour) ?? 0;
-
-  const [formData, setFormData] = useState<MaintenanceForm>({
-    preventivePlanId: 8,
-    equipmentId: equipmentSelected?.equipmentsId || 10,
-    lastPerformedDate: today.toISOString().split("T")[0],
-    lastPerformedMeter: odometer,
-    dueDate: addMonths(today, 6),
-    dueMeter: odometer + 500,
-    userName: "ckarlos",
-  });
-
-  useEffect(() => {
-    if (equipmentSelected) {
-      const initialOdometer = Number(equipmentSelected.hour) || 0;
-      const now = new Date();
-
-      setFormData({
-        preventivePlanId: null,
-        equipmentId: equipmentSelected.equipmentsId || 10,
-        lastPerformedDate: now.toISOString().split("T")[0],
-        lastPerformedMeter: initialOdometer,
-        dueDate: addMonths(now, 6),
-        dueMeter: initialOdometer + 500,
-        userName: "No data",
-      });
-    }
-  }, [equipmentSelected]);
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const { name, value } = e.target;
-
-    // Limpiar error visual del campo interactuado
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: undefined,
-      }));
-    }
-
-    setFormData((prev) => {
-      let updatedValue: number | "" | string = value;
-
-      if (name.includes("Meter") || name.includes("Id")) {
-        updatedValue = value === "" ? "" : Number(value);
-      }
-
-      // 1. Recálculo al cambiar la fecha de última ejecución
-      if (name === "lastPerformedDate" && value) {
-        const selectedDate = new Date(`${value}T00:00:00`);
-        return {
-          ...prev,
-          [name]: value,
-          dueDate: addMonths(selectedDate, 6),
-        };
-      }
-
-      // 2. Recálculo al cambiar lastPerformedMeter
-      if (name === "lastPerformedMeter") {
-        const numericMeter = value === "" ? 0 : Number(value);
-        const newLastPerformedMeter: number | "" =
-          value === "" ? "" : Number(value);
-
-        return {
-          ...prev,
-          lastPerformedMeter: newLastPerformedMeter,
-          dueMeter: value === "" ? "" : numericMeter + 500,
-        };
-      }
-
-      return {
-        ...prev,
-        [name]: updatedValue,
-      };
-    });
+  const clearError = (field: keyof FormErrors) => {
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   const handleClose = () => {
-    setErrors({}); // Limpia las validaciones
-    closeModal(); // Cierra el modal en el store
+    setErrors({});
+    openModal("SCHEDULE"); // regresar a la lista de reminders
   };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
+    const lastMeter = Number(lastPerformedMeter);
+    const dueMeterNum = Number(dueMeter);
 
-    // Convertimos las lecturas a números
-    const lastMeter = Number(formData.lastPerformedMeter);
-    const dueMeter = Number(formData.dueMeter);
-
-    // Verificamos qué grupos tienen información
-    const hasDates = Boolean(formData.lastPerformedDate || formData.dueDate);
-    const hasMeters = Boolean(
-      formData.lastPerformedMeter !== "" || formData.dueMeter !== "",
-    );
-
-    // REGLA BASE: No se pueden dejar ambos pares de datos completamente vacíos
-    if (!hasDates && !hasMeters) {
-      newErrors.lastPerformedDate =
-        "Debes ingresar las fechas o el millaje/horas.";
-      newErrors.lastPerformedMeter =
-        "Debes ingresar las fechas o el millaje/horas.";
-      setErrors(newErrors);
-      return false;
+    if (serviceId == null) {
+      newErrors.preventivePlanId = "Select a service.";
+    } else if (usedServiceIds.has(serviceId)) {
+      newErrors.preventivePlanId =
+        "This equipment already has a reminder for this service.";
     }
 
-    // 1. VALIDACIÓN DE FECHAS (se evalúa si se ingresó alguna fecha)
-    if (hasDates) {
-      if (!formData.lastPerformedDate) {
-        newErrors.lastPerformedDate = "The last execution date is required.";
-      }
+    if (!dueDate && dueMeter === "") {
+      newErrors.dueDate = "Enter a due date and/or a due meter.";
+      newErrors.dueMeter = "Enter a due date and/or a due meter.";
+    }
 
-      if (!formData.dueDate) {
-        newErrors.dueDate = "The deadline is required.";
-      } else if (
-        formData.lastPerformedDate &&
-        new Date(formData.dueDate) < new Date(formData.lastPerformedDate)
-      ) {
+    if (lastPerformedMeter !== "" && (isNaN(lastMeter) || lastMeter < 0)) {
+      newErrors.lastPerformedMeter =
+        "The current reading must be a valid number.";
+    }
+
+    if (dueDate) {
+      if (!lastPerformedDate) {
+        newErrors.lastPerformedDate = "The last execution date is required.";
+      } else if (parseISODate(dueDate) < parseISODate(lastPerformedDate)) {
         newErrors.dueDate =
           "The deadline cannot be earlier than the date of the last execution.";
       }
     }
 
-    // 2. VALIDACIÓN DE ODÓMETRO / HORAS (se evalúa si se ingresó algún odómetro)
-    if (hasMeters) {
-      if (
-        formData.lastPerformedMeter === "" ||
-        isNaN(lastMeter) ||
-        lastMeter < 0
-      ) {
-        newErrors.lastPerformedMeter =
-          "The current reading must be a valid number.";
-      }
-
-      if (formData.dueMeter === "" || isNaN(dueMeter) || dueMeter <= 0) {
+    if (dueMeter !== "") {
+      if (isNaN(dueMeterNum) || dueMeterNum <= 0) {
         newErrors.dueMeter = "The target reading must be greater than 0.";
-      } else if (!isNaN(lastMeter) && dueMeter <= lastMeter) {
-        newErrors.dueMeter = `The target reading (${dueMeter}) must be greater than the current reading (${lastMeter}).`;
+      } else if (lastPerformedMeter === "") {
+        newErrors.lastPerformedMeter = "The current reading is required.";
+      } else if (dueMeterNum <= lastMeter) {
+        newErrors.dueMeter = `The target reading (${dueMeterNum}) must be greater than the current reading (${lastMeter}).`;
       }
     }
 
@@ -174,63 +198,51 @@ function ScheduleCreation({}: Props) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-  //   if (!validateForm()) return;
-
-  //   const payload: CreateScheduleDTO = {
-  //     preventivePlanId: Number(formData.preventivePlanId),
-  //     equipmentId: Number(formData.equipmentId),
-  //     lastPerformedDate: formData.lastPerformedDate,
-  //     lastPerformedMeter: Number(formData.lastPerformedMeter) || 0,
-  //     dueDate: formData.dueDate,
-  //     dueMeter: Number(formData.dueMeter) || 0,
-  //     userName: formData.userName,
-  //   };
-
-  //   handleCreateSchedule(payload, {
-  //     onSuccess: () => {
-  //       handleClose();
-  //     },
-  //   });
-  // };
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    // Si los campos son válidos, solicitamos la autorización por PIN
     setShowPinModal(true);
   };
 
   const handleConfirmPin = (mechanic: Mechanic) => {
     setShowPinModal(false);
+    if (serviceId == null) return;
 
     const payload: CreateScheduleDTO = {
-      preventivePlanId: Number(formData.preventivePlanId),
-      equipmentId: Number(formData.equipmentId),
-      lastPerformedDate: formData.lastPerformedDate,
-      lastPerformedMeter: Number(formData.lastPerformedMeter) || 0,
-      dueDate: formData.dueDate,
-      dueMeter: Number(formData.dueMeter) || 0,
+      preventivePlanId: serviceId,
+      equipmentId: equipment.equipmentsId,
+      lastPerformedDate: lastPerformedDate || null,
+      lastPerformedMeter:
+        lastPerformedMeter === "" ? null : Number(lastPerformedMeter),
+      dueDate: dueDate || null,
+      dueMeter: dueMeter === "" ? null : Number(dueMeter),
       userName: mechanic.fullName,
-      orderStatus: "DRAFT", // O el valor/enum que corresponda por defecto
-      scheduleStatus: "unasigned",
     };
 
     handleCreateSchedule(payload, {
-      onSuccess: () => {
-        handleClose();
-      },
+      onSuccess: () => handleClose(),
     });
   };
 
-  if (!isOpen) return null;
+  const selectedServiceName = services.find((s) => s.id === serviceId)
+    ?.serviceName;
+
+  const renderIntervalHint = () => {
+    if (serviceId == null) return null;
+    if (vehicleTypeId == null) {
+      return "Select a vehicle type to use the service intervals. Using default (6 months / 500 hrs).";
+    }
+    if (loadingIntervals) return "Loading intervals...";
+    if (activeInterval) {
+      return `Interval for this vehicle type: every ${formatInterval(activeInterval)}.`;
+    }
+    return "No interval configured for this service and vehicle type. Using default (6 months / 500 hrs).";
+  };
 
   return (
     <>
       <Modal
-        show={isOpen}
+        show={!showPinModal}
         onHide={handleClose}
         centered
         backdrop="static"
@@ -249,12 +261,11 @@ function ScheduleCreation({}: Props) {
                 </div>
                 <div>
                   <h6 className="fw-semibold mb-0 text-dark fs-6">
-                    Generate maintenance
+                    New maintenance reminder
                   </h6>
                   <span className="text-secondary small">
-                    {equipmentSelected
-                      ? `${equipmentSelected.name} ${equipmentSelected.number ? `(#${equipmentSelected.number})` : ""}`
-                      : `Equipment #${formData.equipmentId}`}
+                    {equipment.name}{" "}
+                    {equipment.number ? `(#${equipment.number})` : ""}
                   </span>
                 </div>
               </div>
@@ -265,27 +276,86 @@ function ScheduleCreation({}: Props) {
               />
             </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label className="small fw-medium text-secondary mb-1">
-                Preventive Plan
-              </Form.Label>
-              <Form.Select
-                size="sm"
-                name="preventivePlanId"
-                value={formData.preventivePlanId ?? ""}
-                onChange={handleChange}
-                isInvalid={!!errors.preventivePlanId}
-                className="rounded-3 border-light-subtle shadow-none fs-7 py-2"
+            <div className="row g-2 mb-3">
+              {/* Servicio */}
+              <div className="col-7">
+                <Form.Group>
+                  <Form.Label className="small fw-medium text-secondary mb-1">
+                    Service
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={serviceId ?? ""}
+                    onChange={(e) => {
+                      setServiceId(
+                        e.target.value === "" ? null : Number(e.target.value),
+                      );
+                      resetDueOverrides();
+                      clearError("preventivePlanId");
+                    }}
+                    isInvalid={!!errors.preventivePlanId}
+                    disabled={loadingServices}
+                    className="rounded-3 border-light-subtle shadow-none fs-7 py-2"
+                  >
+                    <option value="">
+                      {loadingServices ? "Loading..." : "Select service..."}
+                    </option>
+                    {services.map((service) => {
+                      const used = usedServiceIds.has(service.id);
+                      return (
+                        <option
+                          key={service.id}
+                          value={service.id}
+                          disabled={used}
+                        >
+                          {service.serviceName}
+                          {used ? " (already scheduled)" : ""}
+                        </option>
+                      );
+                    })}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.preventivePlanId}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </div>
+
+              {/* Tipo de vehículo (para los intervalos) */}
+              <div className="col-5">
+                <Form.Group>
+                  <Form.Label className="small fw-medium text-secondary mb-1">
+                    Vehicle type
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={vehicleTypeId ?? ""}
+                    onChange={(e) => {
+                      setVehicleTypeOverride(
+                        e.target.value === "" ? null : Number(e.target.value),
+                      );
+                      resetDueOverrides();
+                    }}
+                    className="rounded-3 border-light-subtle shadow-none fs-7 py-2 text-capitalize"
+                  >
+                    <option value="">Not set</option>
+                    {VEHICLE_TYPES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.typeName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </div>
+            </div>
+
+            {serviceId != null && (
+              <div
+                className={`small mb-3 ${activeInterval ? "text-primary" : "text-muted"}`}
+                style={{ fontSize: "0.75rem" }}
               >
-                <option value="">Select plan...</option>
-                <option value={8}>Oil change (Plan #8)</option>
-                <option value={9}>Brakes check (Plan #9)</option>
-                <option value={10}>Grease (Plan #10)</option>
-              </Form.Select>
-              <Form.Control.Feedback type="invalid">
-                {errors.preventivePlanId}
-              </Form.Control.Feedback>
-            </Form.Group>
+                {renderIntervalHint()}
+              </div>
+            )}
 
             {/* Bloque 1: Última Ejecución */}
             <div className="bg-light p-2.5 rounded-3 mb-3 border border-light-subtle">
@@ -298,19 +368,22 @@ function ScheduleCreation({}: Props) {
                     <Form.Label className="fs-8 text-secondary mb-1">
                       Date
                     </Form.Label>
-                    <InputGroup size="sm" hasValidation>
-                      <Form.Control
-                        type="date"
-                        name="lastPerformedDate"
-                        value={formData.lastPerformedDate || ""}
-                        onChange={handleChange}
-                        className="rounded-3 border-light-subtle fs-7 py-1"
-                        isInvalid={!!errors.lastPerformedDate}
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {errors.lastPerformedDate}
-                      </Form.Control.Feedback>
-                    </InputGroup>
+                    <Form.Control
+                      type="date"
+                      size="sm"
+                      value={lastPerformedDate}
+                      onChange={(e) => {
+                        setLastPerformedDate(e.target.value);
+                        resetDueOverrides();
+                        clearError("lastPerformedDate");
+                        clearError("dueDate");
+                      }}
+                      className="rounded-3 border-light-subtle fs-7 py-1"
+                      isInvalid={!!errors.lastPerformedDate}
+                    />
+                    <Form.Control.Feedback type="invalid">
+                      {errors.lastPerformedDate}
+                    </Form.Control.Feedback>
                   </Form.Group>
                 </div>
                 <div className="col-6">
@@ -321,10 +394,14 @@ function ScheduleCreation({}: Props) {
                     <Form.Control
                       type="number"
                       size="sm"
-                      name="lastPerformedMeter"
                       placeholder="8500"
-                      value={formData.lastPerformedMeter ?? ""}
-                      onChange={handleChange}
+                      value={lastPerformedMeter}
+                      onChange={(e) => {
+                        setLastPerformedMeter(toMeter(e.target.value));
+                        resetDueOverrides();
+                        clearError("lastPerformedMeter");
+                        clearError("dueMeter");
+                      }}
                       isInvalid={!!errors.lastPerformedMeter}
                       className="rounded-3 border-light-subtle fs-7 py-1"
                       min="0"
@@ -340,7 +417,7 @@ function ScheduleCreation({}: Props) {
             {/* Bloque 2: Vencimiento Objetivo */}
             <div className="p-2.5 rounded-3 mb-3 border border-primary-subtle bg-primary-subtle bg-opacity-10">
               <div className="text-uppercase fw-bold text-primary fs-8 mb-2 tracking-wide">
-                Due Target
+                Due Target{selectedServiceName ? ` — ${selectedServiceName}` : ""}
               </div>
               <div className="row g-2">
                 <div className="col-6">
@@ -351,9 +428,11 @@ function ScheduleCreation({}: Props) {
                     <Form.Control
                       type="date"
                       size="sm"
-                      name="dueDate"
-                      value={formData.dueDate || ""}
-                      onChange={handleChange}
+                      value={dueDate}
+                      onChange={(e) => {
+                        setDueDateOverride(e.target.value);
+                        clearError("dueDate");
+                      }}
                       isInvalid={!!errors.dueDate}
                       className="rounded-3 border-light-subtle fs-7 py-1"
                     />
@@ -370,11 +449,13 @@ function ScheduleCreation({}: Props) {
                     <Form.Control
                       type="number"
                       size="sm"
-                      name="dueMeter"
                       placeholder="9300"
-                      value={formData.dueMeter ?? ""}
+                      value={dueMeter}
                       min="0"
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        setDueMeterOverride(toMeter(e.target.value));
+                        clearError("dueMeter");
+                      }}
                       isInvalid={!!errors.dueMeter}
                       className="rounded-3 border-light-subtle fs-7 py-1"
                     />
@@ -413,8 +494,8 @@ function ScheduleCreation({}: Props) {
       {showPinModal && (
         <UserPinValidationModal
           show={showPinModal}
-          title="Authorise Schedule Creation"
-          actionDescription={`Creating schedule for Equipment #${equipmentSelected?.number || formData.equipmentId}`}
+          title="Authorise Reminder Creation"
+          actionDescription={`Creating ${selectedServiceName ?? "maintenance"} reminder for Equipment #${equipment.number}`}
           onClose={() => setShowPinModal(false)}
           onConfirm={handleConfirmPin}
         />

@@ -85,22 +85,34 @@ export type Schedule = {
   scheduleStatus: string;
 };
 
-export type CreateScheduleDTO = Omit<
-  Schedule,
-  "equipmentPreventiveScheduleId" | "isOverdue" | "workOrderId" | "isCompleted"
-> & {
+export type SchedulesByEquipment = Record<number, Schedule[]>;
+
+// Coincide con PreventiveScheduleRequestDto del backend.
+// preventivePlanId = services.service_id
+export type CreateScheduleDTO = {
+  preventivePlanId: number;
+  equipmentId: number;
+  lastPerformedDate: string | null;
+  lastPerformedMeter: number | null;
+  dueDate: string | null;
+  dueMeter: number | null;
   userName: string;
 };
 
-export interface MaintenanceForm {
-  preventivePlanId: number | null;
-  equipmentId: number;
-  lastPerformedDate: string;
-  lastPerformedMeter: number | "";
-  dueDate: string;
-  dueMeter: number | "";
-  userName: string;
-}
+// GET v2/maintenance/services
+export type ServiceType = {
+  id: number;
+  serviceName: string;
+};
+
+// GET v2/maintenance/interval/{vehicleTypeId}
+export type ServiceInterval = {
+  intervalId: number;
+  vehicleTypeId: number;
+  serviceId: number;
+  value: number;
+  unit: string;
+};
 
 export type WorkOrder = {
   id: number;

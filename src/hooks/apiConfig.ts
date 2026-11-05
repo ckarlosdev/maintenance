@@ -1,11 +1,17 @@
 // Production environment
 export const API_BASE_URL = "https://api-gateway-px44.onrender.com/api/";
+export const API_BASE_URL_LOCAL = "http://localhost:8087/api/";
 
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../stores/authStore";
 
-export const api = axios.create({
+export const apiExternal = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
+});
+
+export const api = axios.create({
+  baseURL: API_BASE_URL_LOCAL,
   timeout: 10000,
 });
 

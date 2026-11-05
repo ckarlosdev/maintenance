@@ -1,5 +1,5 @@
 import { Button, Card, Col, Row } from "react-bootstrap";
-import type { Equipment, EquipmentDetail, Schedule } from "../../types";
+import type { Equipment, EquipmentDetail } from "../../types";
 import useViewStore from "../../stores/useViewStore";
 import { useNavigate } from "react-router-dom";
 import { useGetChedulesByEquipmentIds } from "../../hooks/useSchedules";
@@ -8,12 +8,12 @@ import {
   type ActiveIssuesMap,
 } from "../../hooks/useIssues";
 import { useMemo } from "react";
-import { ScheduleBadge } from "./ScheduleBadge";
-import useScheduleStore from "../../stores/useScheduleStore";
+import { RemindersSummaryBadge } from "../schedule/RemindersSummaryBadge";
 import { useModalStore } from "../../stores/useModalStore";
 import useWorkOrderStore from "../../stores/useWorkOrderStore";
 import { useEquipments } from "../../hooks/useEquipments";
 import { ReportBadge } from "./ReportBadge";
+import { groupSchedulesByEquipment } from "../../utilities/scheduleStatus";
 
 type Props = {
   itemsInSelectedSubtype: EquipmentDetail[];
@@ -21,8 +21,8 @@ type Props = {
 
 function ItemView({ itemsInSelectedSubtype }: Props) {
   const navigate = useNavigate();
-  const { setSchedule } = useScheduleStore();
-  const { openModal } = useModalStore();
+  const { openModal, setEquipmentSelected: setModalEquipment } =
+    useModalStore();
   const { setEquipmentSelected } = useWorkOrderStore();
   const { data: equipments } = useEquipments();
 
@@ -36,11 +36,10 @@ function ItemView({ itemsInSelectedSubtype }: Props) {
   const { data: issuesMap = {} as ActiveIssuesMap } =
     useGetIssuesByEquipmentIds(equipmentIdsShown);
 
-  const maintenanceMap = useMemo(() => {
-    const map = new Map();
-    schedules.forEach((item) => map.set(item.equipmentId, item));
-    return map;
-  }, [schedules]);
+  const schedulesByEquipment = useMemo(
+    () => groupSchedulesByEquipment(schedules),
+    [schedules],
+  );
 
   const {
     selectedFamily,
@@ -62,9 +61,9 @@ function ItemView({ itemsInSelectedSubtype }: Props) {
     }
   };
 
-  const handleScheduleModal = (item: Equipment, maintenance: Schedule) => {
-    setSchedule(maintenance);
-    setEquipmentSelected(item);
+  const handleScheduleModal = (item: Equipment) => {
+    setEquipmentSelected(item); // usado por WorkOrderCreation
+    setModalEquipment(item); // usado por ScheduleModal / ScheduleCreation
     openModal("SCHEDULE");
   };
 
@@ -120,19 +119,15 @@ function ItemView({ itemsInSelectedSubtype }: Props) {
                   <div className="d-flex justify-content-between align-items-center mt-3">
                     {/* Contenedor izquierdo para los badges */}
                     <div className="d-flex gap-2">
-                      <ScheduleBadge
-                        maintenance={maintenanceMap.get(eq.equipmentsId)}
+                      <RemindersSummaryBadge
+                        schedules={schedulesByEquipment[eq.equipmentsId]}
                         currentOdometer={Number(eq.hour)}
-                        equipment={eq}
                         onClick={() => {
                           const selected = equipments?.find(
                             (i) => i.equipmentsId === eq.equipmentsId,
                           );
                           if (!selected) return;
-                          handleScheduleModal(
-                            selected,
-                            maintenanceMap.get(eq.equipmentsId),
-                          );
+                          handleScheduleModal(selected);
                         }}
                       />
                       <ReportBadge issues={equipmentIssues} equipment={eq} />

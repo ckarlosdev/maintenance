@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { useSaveWorkOrder } from "../hooks/useWorkOrders";
 import { useUpdateIssueFlow } from "../hooks/useEquipmentIssues";
+import { useServiceNames } from "../hooks/useServices";
 
 type Props = {};
 
@@ -44,6 +45,8 @@ function WorkOrderCreation({}: Props) {
       ? [equipmentSelected.equipmentsId]
       : [],
   );
+
+  const serviceNames = useServiceNames();
 
   const allIssues = useMemo(
     () => Object.values(reportedIssues ?? {}).flat(),
@@ -93,14 +96,26 @@ function WorkOrderCreation({}: Props) {
     });
   }, [allIssues, usedIssueIds]);
 
+  // Nota: task.preventivePlanId guarda el ID del schedule (equipmentPreventiveScheduleId)
   const availablePlans = useMemo(() => {
-    return (pendingSchedules ?? []).filter((plan) => {
-      const planId =
-        plan.preventivePlanId ?? plan.equipmentPreventiveScheduleId;
-
-      return !usedPlanIds.has(planId) && plan.scheduleStatus === "unassigned";
-    });
+    return (pendingSchedules ?? []).filter(
+      (plan) =>
+        !usedPlanIds.has(plan.equipmentPreventiveScheduleId) &&
+        plan.scheduleStatus === "unassigned",
+    );
   }, [pendingSchedules, usedPlanIds]);
+
+  const scheduleLabels = useMemo(() => {
+    const map: Record<number, string> = {};
+    (pendingSchedules ?? []).forEach((plan) => {
+      map[plan.equipmentPreventiveScheduleId] =
+        plan.preventivePlanId != null
+          ? (serviceNames[plan.preventivePlanId] ??
+            `Service #${plan.preventivePlanId}`)
+          : `Plan #${plan.equipmentPreventiveScheduleId}`;
+    });
+    return map;
+  }, [pendingSchedules, serviceNames]);
 
   useEffect(() => {
     if (equipmentSelected?.equipmentsId) {
@@ -372,6 +387,7 @@ function WorkOrderCreation({}: Props) {
                           key={plan.equipmentPreventiveScheduleId}
                           value={planId}
                         >
+                          {scheduleLabels[planId]} —{" "}
                           {plan.dueMeter
                             ? `Due at ${plan.dueMeter} hrs`
                             : `Due: ${plan.dueDate}`}
@@ -436,7 +452,9 @@ function WorkOrderCreation({}: Props) {
                                 className="badge bg-info-subtle text-info-emphasis border border-info-subtle fw-medium px-2 py-0.5 rounded-pill"
                                 style={{ fontSize: "0.68rem" }}
                               >
-                                📅 Plan #{t.preventivePlanId}
+                                📅{" "}
+                                {scheduleLabels[t.preventivePlanId] ??
+                                  `Plan #${t.preventivePlanId}`}
                               </span>
                             )}
                           </div>
