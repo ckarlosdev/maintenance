@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Employee } from "../types";
-import { api, apiExternal } from "./apiConfig";
+import { api } from "./apiConfig";
 
 const queryEmployees = (): Promise<Employee[]> => {
-  return apiExternal.get("v1/employee").then((response) => response.data);
+  return api.get("v1/employee").then((response) => response.data);
 };
 
 function useEmployees() {

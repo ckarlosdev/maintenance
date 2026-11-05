@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Equipment, EquipmentDetail } from "../types";
-import { api, apiExternal } from "./apiConfig";
+import { api } from "./apiConfig";
 
 const queryEquipments = (): Promise<Equipment[]> => {
-  return apiExternal.get("v1/equipments").then((response) => response.data);
+  return api.get("v1/equipments").then((response) => response.data);
 };
 
 export function useEquipments() {
@@ -17,7 +17,7 @@ export function useEquipments() {
 }
 
 const queryEquipmentsDetails = (): Promise<EquipmentDetail[]> => {
-  return apiExternal.get("v1/equipments/with-details").then((response) => response.data);
+  return api.get("v1/equipments/with-details").then((response) => response.data);
 };
 
 export function useEquipmentsDetails() {
