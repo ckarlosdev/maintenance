@@ -1,0 +1,1 @@
+import{t as e}from"./react-CkKTQMe6.js";var t=e(e=>({activeModal:null,equipmentSelected:null,data:null,setEquipmentSelected:t=>e({equipmentSelected:t}),openModal:(t,n=null)=>e({activeModal:t,data:n}),closeModal:()=>e({activeModal:null,data:null})}));export{t};

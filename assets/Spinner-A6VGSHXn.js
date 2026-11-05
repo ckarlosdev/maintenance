@@ -1,0 +1,1 @@
+import{C as e,b as t,g as n,h as r,v as i}from"./react-CkKTQMe6.js";var a=e(i()),o=e(t()),s=n(),c=o.forwardRef(({bsPrefix:e,variant:t,animation:n=`border`,size:i,as:o=`div`,className:c,...l},u)=>{e=r(e,`spinner`);let d=`${e}-${n}`;return(0,s.jsx)(o,{ref:u,...l,className:(0,a.default)(c,d,i&&`${d}-${i}`,t&&`text-${t}`)})});c.displayName=`Spinner`;export{c as t};
