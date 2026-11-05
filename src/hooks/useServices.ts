@@ -1,7 +1,11 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./apiConfig";
-import type { ServiceInterval, ServiceType } from "../types";
+import type {
+  ServiceInterval,
+  ServiceRequestDTO,
+  ServiceType,
+} from "../types";
 import { useEquipmentsDetails } from "./useEquipments";
 import { resolveVehicleTypeId } from "../utilities/vehicleTypes";
 
@@ -17,6 +21,51 @@ export function useServices() {
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     retry: false,
+  });
+}
+
+// CREATE A NEW SERVICE
+const createService = async (dto: ServiceRequestDTO): Promise<ServiceType> => {
+  const { data } = await api.post<ServiceType>("v2/maintenance/services", dto);
+  return data;
+};
+
+export function useCreateService() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createService,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+    },
+    onError: (error) => {
+      console.error("Error creating a service:", error);
+    },
+  });
+}
+
+// UPDATE AN EXISTING SERVICE
+const updateService = async ({
+  id,
+  serviceName,
+}: { id: number } & ServiceRequestDTO): Promise<ServiceType> => {
+  const { data } = await api.put<ServiceType>(`v2/maintenance/services/${id}`, {
+    serviceName,
+  });
+  return data;
+};
+
+export function useUpdateService() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateService,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+    },
+    onError: (error) => {
+      console.error("Error updating a service:", error);
+    },
   });
 }
 

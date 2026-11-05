@@ -105,6 +105,11 @@ export type ServiceType = {
   serviceName: string;
 };
 
+// POST v2/maintenance/services  |  PUT v2/maintenance/services/{serviceId}
+export type ServiceRequestDTO = {
+  serviceName: string;
+};
+
 // GET v2/maintenance/interval/{vehicleTypeId}
 export type ServiceInterval = {
   intervalId: number;

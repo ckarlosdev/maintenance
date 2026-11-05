@@ -16,6 +16,9 @@ const ScheduleCreation = lazy(
 );
 const KpiDetailsModal = lazy(() => import("../components/KpiDetailsModal"));
 const WorkOrderCreation = lazy(() => import("../components/WorkOrderCreation"));
+const ServicesModal = lazy(
+  () => import("../components/services/ServicesModal"),
+);
 
 export default function MainLayout() {
 
@@ -35,6 +38,7 @@ export default function MainLayout() {
         <WorkOrderCreation />
         <QuickView />
         <ReportedIssuesModal />
+        <ServicesModal />
       </Suspense>
     </>
   );
