@@ -20,18 +20,18 @@ import {
   type ActiveIssuesMap,
 } from "../hooks/useIssues";
 import { IssuesStatusBadge } from "./Issue/IssuesStatusBadge";
-import useScheduleStore from "../stores/useScheduleStore";
-import { MaintenanceStatusBadge } from "./schedule/MaintenanceStatusBadge";
+import { RemindersSummaryBadge } from "./schedule/RemindersSummaryBadge";
 import { FaWrench } from "react-icons/fa";
-import type { Equipment, Schedule } from "../types";
+import type { Equipment } from "../types";
 import { useModalStore } from "../stores/useModalStore";
+import { groupSchedulesByEquipment } from "../utilities/scheduleStatus";
 
 export function EquipmentTable() {
   const navigate = useNavigate();
   const { setEquipmentSelected } = useWorkOrderStore();
   const { data: equipments = [] } = useEquipments();
-  const { setSchedule } = useScheduleStore();
-  const { openModal } = useModalStore();
+  const { openModal, setEquipmentSelected: setModalEquipment } =
+    useModalStore();
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,11 +83,10 @@ export function EquipmentTable() {
   const { data: issuesMap = {} as ActiveIssuesMap } =
     useGetIssuesByEquipmentIds(equipmentIdsShown);
 
-  const maintenanceMap = useMemo(() => {
-    const map = new Map();
-    schedules.forEach((item) => map.set(item.equipmentId, item));
-    return map;
-  }, [schedules]);
+  const schedulesByEquipment = useMemo(
+    () => groupSchedulesByEquipment(schedules),
+    [schedules],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -117,9 +116,9 @@ export function EquipmentTable() {
     navigate(`/work-orders/${equipmentId}`);
   };
 
-  const handleScheduleModal = (item: Equipment, maintenance: Schedule) => {
-    setSchedule(maintenance);
-    setEquipmentSelected(item);
+  const handleScheduleModal = (item: Equipment) => {
+    setEquipmentSelected(item); // usado por WorkOrderCreation
+    setModalEquipment(item); // usado por ScheduleModal / ScheduleCreation
     openModal("SCHEDULE");
   };
 
@@ -172,19 +171,11 @@ export function EquipmentTable() {
                     </td>
                     <td className="fw-semibold text-secondary">{item.hour}</td>
                     <td>
-                      <MaintenanceStatusBadge
-                        maintenance={maintenanceMap.get(item.equipmentsId)}
+                      <RemindersSummaryBadge
+                        schedules={schedulesByEquipment[item.equipmentsId]}
                         currentOdometer={Number(item.hour)}
-                        equipment={item}
-                        onClick={() => {
-                          handleScheduleModal(
-                            item,
-                            maintenanceMap.get(item.equipmentsId),
-                          );
-                        }}
+                        onClick={() => handleScheduleModal(item)}
                       />
-                      {/* <div className="fw-bold text-dark">MM/DD/YYYY</div>
-                  {renderStatusBadge("pending")} */}
                     </td>
                     <td className="text-wrap" style={{ maxWidth: "200px" }}>
                       <IssuesStatusBadge

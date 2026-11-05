@@ -5,6 +5,7 @@ import { useAddTask } from "../../hooks/useWorkOrders";
 import { useMemo, useState } from "react";
 import { useGetChedulesByEquipmentIds } from "../../hooks/useSchedules";
 import { useGetIssuesByEquipmentIds } from "../../hooks/useIssues";
+import { useServiceNames } from "../../hooks/useServices";
 
 type AddTaskModalProps = {
   show: boolean;
@@ -39,6 +40,8 @@ export function TaskModal({ show, onClose, workOrder }: AddTaskModalProps) {
     workOrder.equipmentId ? [workOrder.equipmentId] : [],
   );
 
+  const serviceNames = useServiceNames();
+
   const allIssues = useMemo(
     () => Object.values(reportedIssues ?? {}).flat(),
     [reportedIssues],
@@ -65,12 +68,13 @@ export function TaskModal({ show, onClose, workOrder }: AddTaskModalProps) {
     return allIssues.filter((issue) => !usedIssueIds.has(issue.id));
   }, [allIssues, usedIssueIds]);
 
+  // Nota: task.preventivePlanId guarda el ID del schedule (equipmentPreventiveScheduleId)
   const availablePlans = useMemo(() => {
-    return (pendingSchedules ?? []).filter((plan) => {
-      const planId =
-        plan.preventivePlanId ?? plan.equipmentPreventiveScheduleId;
-      return !usedPlanIds.has(planId);
-    });
+    return (pendingSchedules ?? []).filter(
+      (plan) =>
+        !usedPlanIds.has(plan.equipmentPreventiveScheduleId) &&
+        plan.scheduleStatus === "unassigned",
+    );
   }, [pendingSchedules, usedPlanIds]);
 
   // --- Handlers ---
@@ -210,6 +214,11 @@ export function TaskModal({ show, onClose, workOrder }: AddTaskModalProps) {
                   const planId = plan.equipmentPreventiveScheduleId;
                   return (
                     <option key={planId} value={planId}>
+                      {plan.preventivePlanId != null
+                        ? (serviceNames[plan.preventivePlanId] ??
+                          `Service #${plan.preventivePlanId}`)
+                        : `Plan #${planId}`}{" "}
+                      —{" "}
                       {plan.dueMeter
                         ? `Due at ${plan.dueMeter} hrs`
                         : `Due: ${plan.dueDate}`}
